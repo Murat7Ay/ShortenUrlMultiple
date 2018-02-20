@@ -1,8 +1,7 @@
 ﻿using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Formatting;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
+using RestSharp;
+using System.Net;
+using ShortenUrl.Models;
 
 namespace ShortenUrl
 {
@@ -19,88 +18,95 @@ namespace ShortenUrl
             _uri = uri;
         }
 
-        public async Task<ShortenResult> Shorten(string longUrl)
+        public ApiResponse Shorten(string longUrl)
         {
-            var httpClient = new HttpClient();
-            var uri = $"{_uri}?key={_apiKey}";
-
+            var uri = _uri + "?key=" + _apiKey;
+            var client = new RestClient(uri);
+            var request = new RestRequest { Method = Method.POST };
             var content = new { longUrl };
+            request.AddJsonBody(content);
+            var response = client.Execute<ApiResponse>(request);
 
-            var typeFormatter = new JsonMediaTypeFormatter();
 
-            var response = await httpClient.PostAsync(uri, content, typeFormatter);
-
-            var json = await response.Content.ReadAsStringAsync();
-            var jObject = JObject.Parse(json);
-
-            if (response.IsSuccessStatusCode)
+            if (response.StatusCode == HttpStatusCode.OK)
             {
-                return new ShortenResult
+                return new ApiResponse
                 {
                     Ok = true,
 
-                    Kind = jObject.Value<string>("kind"),
-                    Id = jObject.Value<string>("id"),
-                    LongUrl = jObject.Value<string>("longUrl"),
-                    Status = jObject.Value<string>("status")
+                    Kind = response.Data.Kind,
+                    Id = response.Data.Id,
+                    LongUrl = response.Data.LongUrl
+                    //Status = jObject.Value<string>("status")
                 };
             }
 
-            var error = jObject.Value<JObject>("error");
-            var errors = error.Value<JArray>("errors");
+            var error = response.Data.Error;
+            var errors = response.Data.Error.Errors;
 
-            return new ShortenResult
+            return new ApiResponse
             {
+                Ok = false,
                 Error = new Error
                 {
                     Errors = errors.Select(x => new ErrorDescription
                     {
-                        Domain = x.Value<string>("domain"),
-                        Reason = x.Value<string>("reason"),
-                        Message = x.Value<string>("message"),
-                        Location = x.Value<string>("location"),
-                        LocationType = x.Value<string>("locationType")
+                        Domain = x.Domain,
+                        Reason = x.Reason,
+                        Message = x.Message,
+                        Location = x.Location,
+                        LocationType = x.LocationType
                     }).ToArray(),
-                    Code = error.Value<int>("code"),
-                    Message = error.Value<string>("message"),
+                    Code = error.Code,
+                    Message = error.Message
                 }
             };
         }
+
+        public ApiResponse Tracker(string shortUrl)
+        {
+            //https://www.googleapis.com/urlshortener/v1/url?shortUrl=https://goo.gl/L2NRzo&projection=FULL&key=AIzaSyB_CuchBvjq9C2AcbSj3r3EIIm1dAIyHIA
+
+            var uri = _uri + "?shortUrl=" + shortUrl + "&projection=FULL&key=" + _apiKey;
+            var client = new RestClient(uri);
+            var request = new RestRequest { Method = Method.GET };
+            var response = client.Execute<ApiResponse>(request);
+
+
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                return response.Data;
+                //    new ApiResponse
+                //{
+                //    Ok = true,
+                //    Kind = response.Data.Kind,
+                //    Id = response.Data.Id,
+                //    LongUrl = response.Data.LongUrl,
+                //    Status = response.Data.Status
+                //};
+            }
+
+            var error = response.Data.Error;
+            var errors = response.Data.Error.Errors;
+
+            return new ApiResponse
+            {
+                Ok = false,
+                Error = new Error
+                {
+                    Errors = errors.Select(x => new ErrorDescription
+                    {
+                        Domain = x.Domain,
+                        Reason = x.Reason,
+                        Message = x.Message,
+                        Location = x.Location,
+                        LocationType = x.LocationType
+                    }).ToArray(),
+                    Code = error.Code,
+                    Message = error.Message
+                }
+            };
+        }
+
     }
-
-    public class ShortenResult
-    {
-        public bool Ok { get; set; } = false;
-
-        public string Kind { get; set; }
-
-        public string Id { get; set; }
-
-        public string LongUrl { get; set; }
-
-        public string Status { get; set; }
-
-        public Error Error { get; set; }
-    }
-
-    public class Error
-    {
-        public ErrorDescription[] Errors { get; set; }
-        public int Code { get; set; }
-        public string Message { get; set; }
-    }
-
-    public class ErrorDescription
-    {
-        public string Domain { get; set; }
-
-        public string Reason { get; set; }
-
-        public string Message { get; set; }
-
-        public string LocationType { get; set; }
-
-        public string Location { get; set; }
-    }
-
 }
