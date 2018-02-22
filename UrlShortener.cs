@@ -15,7 +15,7 @@ namespace ShortenUrl
     {
         private static UrlShortener _instance;
 
-        private const string ApiKey = "AIzaSyB_CuchBvjq9C2AcbSj3r3EIIm1dAIyHIA1";
+        private const string ApiKey = "----------------------------------------";
         
         private static readonly RestClient Client = new RestClient("https://www.googleapis.com/urlshortener/v1/url");
         private static readonly CultureInfo culture = new CultureInfo("en-US");
