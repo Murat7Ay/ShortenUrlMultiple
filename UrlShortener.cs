@@ -6,7 +6,7 @@ using RestSharp;
 
 namespace ShortenUrl
 {
-     /// <summary>
+    /// <summary>
     /// This class has two methods
     /// It makes if your text message has urls than convert them shorten urls like goo.gl/.... OR
     /// It tracks your shorten Urls statistics
@@ -15,10 +15,10 @@ namespace ShortenUrl
     {
         private static UrlShortener _instance;
 
-        private const string ApiKey = "----------------------------------------";
+        private const string ApiKey = "AIzaSyB_CuchBvjq9C2AcbSj3r3EIIm1dAIyHIA";
         
         private static readonly RestClient Client = new RestClient("https://www.googleapis.com/urlshortener/v1/url");
-        private static readonly CultureInfo culture = new CultureInfo("en-US");
+        private static readonly CultureInfo Culture = new CultureInfo("en-US");
 
 
         private UrlShortener()
@@ -31,7 +31,7 @@ namespace ShortenUrl
             get { return _instance ?? (_instance = new UrlShortener()); }
         }
 
-        private string Shorten(string longUrl)
+        private static string Shorten(string longUrl)
         {
             var request = new RestRequest("?key=" + ApiKey, Method.POST);
             request.AddJsonBody(new { longUrl });
@@ -65,9 +65,9 @@ namespace ShortenUrl
         /// <summary>
         /// <para>It finds the URLs in the message text and converts it into short URLs.</para>
         /// <para>If the message has no URLs returns the message</para>
-        /// <para>(Item1=>true if messageText has urls and successfully convert to shorten or messageText has no urls, false =>messageText's urls can not convert to shorten)</para>
+        /// <para>(Item1=>true if messageText has urls and successfully convert to shorten or messageText has no urls, false =>messageText's urls can not convert to shorten, orginal text returns)</para>
         /// <para>(Item2 => message with no urls or message with shorten urls, if key is false message will be error)</para>
-        /// <para>(Item3 => List of key value pair Key is long url, value is shorten url Check if it is null)</para>
+        /// <para>(Item3 => List of key value pair Key is long url, value is shorten url, Check if it is null)</para>
         /// </summary>
         /// <param name="messageText">Message content</param>
         public Tuple<bool,string,List<KeyValuePair<string,string>>> ConvertToShortenUrl(string messageText)
@@ -80,13 +80,14 @@ namespace ShortenUrl
             //var linkParser = new Regex(@"^(https?|ftp)://[^\s/$.?#].[^\s]*$");
             //var linkParser = new Regex(@"^(?:(http[s]?|ftp[s]):\/\/)?([^:\/\s]+)(:[0-9]+)?((?:\/\w+)*\/)([\w\-\.]+[^#?\s]+)([^#\s]*)?(#[\w\-]+)?");
             //var linkParser = new Regex(@"[(http(s)?):\/\/?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)");
-            var matchesArray = linkParser.Matches(messageText).Cast<Match>().Where(x => culture.CompareInfo.IndexOf(x.Value, "telekurye", CompareOptions.IgnoreCase) >= 0)
+            var orginalText = messageText;
+            var matchesArray = linkParser.Matches(messageText).Cast<Match>().Where(x => Culture.CompareInfo.IndexOf(x.Value, "telekurye", CompareOptions.IgnoreCase) >= 0)
                 .Select(s => s.Value).ToArray();
             
             var keyValueList = new List<KeyValuePair<string,string>>();
 
             if (matchesArray.Length == 0)
-                return new Tuple<bool, string, List<KeyValuePair<string, string>>>(true, messageText, null);
+                return new Tuple<bool, string, List<KeyValuePair<string, string>>>(false,messageText, null);
 
             foreach (var match in matchesArray)
             {
@@ -98,10 +99,9 @@ namespace ShortenUrl
                     messageText = messageText.Replace(match, shortenUrl);
                 }
                 else
-                    return new Tuple<bool, string, List<KeyValuePair<string, string>>>(false,messageText,null);
+                    return new Tuple<bool, string, List<KeyValuePair<string, string>>>(false,orginalText, null);
             }
-
-            return new Tuple<bool, string, List<KeyValuePair<string, string>>>(true, messageText,keyValueList);
+            return new Tuple<bool, string, List<KeyValuePair<string, string>>>(true, messageText, keyValueList);
         }
     }
 
@@ -255,8 +255,4 @@ namespace ShortenUrl
         public Day day { get; set; }
         public TwoHours twoHours { get; set; }
     }
-
-
-
-
 }
